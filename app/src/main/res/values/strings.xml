@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">LearnUi</string>
+    <string name="app_logo">app_logo</string>
+    <string name="app_title">ARVidya</string>
+    <string name="login">Login</string>
+    <string name="sign_up">SignUp</string>
+    <string name="title_activity_main_screen">MainScreen</string>
+    <string name="title_activity_model_viewer">ModelViewer</string>
+</resources>
