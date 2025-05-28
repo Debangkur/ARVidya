@@ -33,6 +33,8 @@ import com.example.learnui.DataClass.Topic
 import com.example.learnui.Firebase.FirebaseRepository
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Composable
 fun TopicPage(subject: String, navController: NavController) {
@@ -41,6 +43,7 @@ fun TopicPage(subject: String, navController: NavController) {
     LaunchedEffect(subject) {
         FirebaseRepository.fetchTopics(subject) {
             topics = it
+            Log.d("TopicModel","$topics")
         }
     }
 
@@ -73,7 +76,9 @@ private fun TopicCard(topic: Topic, navController: NavController) {
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .clickable {
-                navController.navigate("model/{model}/{tts}")
+                val encodedModel = URLEncoder.encode(topic.location, StandardCharsets.UTF_8.toString())
+                val encodedTTS = URLEncoder.encode(topic.tts, StandardCharsets.UTF_8.toString())
+                navController.navigate("model?location=$encodedModel&tts=$encodedTTS")
             },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(8.dp)

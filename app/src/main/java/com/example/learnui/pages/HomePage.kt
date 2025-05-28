@@ -1,5 +1,6 @@
 package com.example.learnui.pages
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,6 +29,7 @@ fun HomePage(navController: NavController) {
     LaunchedEffect(Unit) {
         FirebaseRepository.fetchSubjects {
             subjects = it
+            Log.d("Subject", "$subjects")
         }
     }
 
