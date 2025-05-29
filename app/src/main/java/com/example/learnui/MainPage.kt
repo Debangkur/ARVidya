@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.learnui.ARCode.ARViewer
 import com.example.learnui.ARCode.ModelViewer
 import com.example.learnui.pages.MainScreen
 import com.example.learnui.pages.TopicPage
@@ -36,20 +37,45 @@ class MainPage : ComponentActivity() {
                     }
 
                     composable(
-                        route = "model?location={encodedLocation}&tts={encodedTts}",
+                        route = "model/{location}/{tts}/{name}",
                         arguments = listOf(
-                            navArgument("location") {
+                            navArgument(name = "location"){
                                 type = NavType.StringType
-                                nullable = true },
-                            navArgument("tts") {
+                            },
+                            navArgument(name = "tts"){
                                 type = NavType.StringType
-                                nullable = true }
+                            },
+                            navArgument(name = "name"){
+                                type = NavType.StringType
+                            }
                         )
                     ){ backStackEntry ->
                         val location = backStackEntry.arguments?.getString("location") ?: ""
                         val tts = backStackEntry.arguments?.getString("tts") ?: ""
-                        ModelViewer(location,tts)
+                        val name = backStackEntry.arguments?.getString("name") ?: ""
+                        ModelViewer(location,tts,name, navController)
                     }
+
+                    composable(
+                        route = "ar/{location}/{tts}/{name}",
+                        arguments = listOf(
+                            navArgument(name = "location"){
+                                type = NavType.StringType
+                            },
+                            navArgument(name = "tts"){
+                                type = NavType.StringType
+                            },
+                            navArgument(name = "name"){
+                                type = NavType.StringType
+                            }
+                        )
+                    ){ backStackEntry ->
+                        val location = backStackEntry.arguments?.getString("location") ?: ""
+                        val tts = backStackEntry.arguments?.getString("tts") ?: ""
+                        val name = backStackEntry.arguments?.getString("name") ?: ""
+                        ARViewer(location,tts,name, navController)
+                    }
+
                 }
             }
         }

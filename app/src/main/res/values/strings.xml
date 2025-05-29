@@ -6,4 +6,7 @@
     <string name="sign_up">SignUp</string>
     <string name="title_activity_main_screen">MainScreen</string>
     <string name="title_activity_model_viewer">ModelViewer</string>
+    <string name="title_name">AR Model Viewer Compose</string>
+    <string name="point_your_phone_down">Point your phone down at an empty space, and move it around slowly</string>
+    <string name="tap_anywhere_to_add_model">Tap anywhere to add model</string>
 </resources>

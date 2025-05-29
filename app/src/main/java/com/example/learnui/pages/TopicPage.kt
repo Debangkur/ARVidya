@@ -78,7 +78,8 @@ private fun TopicCard(topic: Topic, navController: NavController) {
             .clickable {
                 val encodedModel = URLEncoder.encode(topic.location, StandardCharsets.UTF_8.toString())
                 val encodedTTS = URLEncoder.encode(topic.tts, StandardCharsets.UTF_8.toString())
-                navController.navigate("model?location=$encodedModel&tts=$encodedTTS")
+                val encodedName = URLEncoder.encode(topic.name, StandardCharsets.UTF_8.toString())
+                navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
             },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(8.dp)
