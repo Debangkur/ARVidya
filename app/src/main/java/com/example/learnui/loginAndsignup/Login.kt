@@ -2,6 +2,7 @@ package com.example.learnui.loginAndsignup
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.learnui.MainActivity
 import com.example.learnui.R
+import com.example.learnui.SignUp
 import com.example.learnui.ui.theme.Black
 import com.example.learnui.ui.theme.BlueGray
 import com.example.learnui.ui.theme.Roboto
@@ -83,6 +86,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
 
 @Composable
 private fun NewAccountCreation() {
+    val context = LocalContext.current
     val uiColor = if (isSystemInDarkTheme()) Color.White else Black
     Box(
         modifier = Modifier
@@ -92,6 +96,10 @@ private fun NewAccountCreation() {
     ) {
 
         Text(
+            modifier = Modifier.clickable {
+                val intent = Intent(context,SignUp::class.java)
+                context.startActivity(intent)
+            },
             text = buildAnnotatedString {
                 withStyle(
                     style = SpanStyle(

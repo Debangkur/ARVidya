@@ -18,6 +18,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         auth = FirebaseAuth.getInstance()
 
+
+
         setContent {
             LearnUiTheme {
                 LoginScreen{ email, password ->

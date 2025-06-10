@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,6 +87,30 @@ fun ARViewer(location: String, tts: String, name: String, navController: NavHost
             mutableStateOf<TrackingFailureReason?>(null)
         }
         var frame by remember { mutableStateOf<Frame?>(null) }
+
+        // Cleanup effect when leaving the composable
+        DisposableEffect(Unit) {
+            onDispose {
+                try {
+                    // Clear child nodes first
+                    childNodes.clear()
+
+                    // Clean up model instance
+                    modelInstance?.let {
+                        // If there's a cleanup method, call it
+                        // it.cleanup() // Uncomment if available
+                    }
+                    modelInstance = null
+
+                    // Reset frame
+                    frame = null
+
+                    Log.d("ARViewer", "AR resources cleaned up")
+                } catch (e: Exception) {
+                    Log.e("ARViewer", "Error during cleanup", e)
+                }
+            }
+        }
 
         // Load model from cache on startup
         LaunchedEffect(Unit) {
@@ -204,16 +229,33 @@ private suspend fun loadModelFromCache(
         withContext(Dispatchers.IO) {
             // Look for the cached model file
             val modelFile = File(context.cacheDir, "$name.glb")
+            val permanentFile = File(context.filesDir,"$name.glb")
 
-            if (!modelFile.exists()) {
-                onError("No cached model found. Please download a model first.")
-                return@withContext
+            // Determine which file to use (prefer permanent storage)
+            val modelFileToUse = when {
+                permanentFile.exists() && permanentFile.length() > 0 -> {
+                    Log.d("ModelLoader", "Using permanent model file: ${permanentFile.absolutePath}")
+                    permanentFile
+                }
+                modelFile.exists() && modelFile.length() > 0 -> {
+                    Log.d("ModelLoader", "Using cache model file: ${modelFile.absolutePath}")
+                    modelFile
+                }
+                else -> {
+                    onError("Model file not found in either cache or permanent storage")
+                    return@withContext
+                }
             }
+
 
             Log.d("ARModel", "Found cached model: ${modelFile.absolutePath}, size: ${modelFile.length()}")
 
             // Read the model file as bytes
-            val modelBytes = modelFile.readBytes()
+            val modelBytes = modelFileToUse.readBytes()
+
+            if (modelBytes.isEmpty()) {
+                throw Exception("Model file is empty: ${modelFileToUse.absolutePath}")
+            }
 
             // Create ByteBuffer for SceneView
             val byteBuffer = ByteBuffer.allocateDirect(modelBytes.size)

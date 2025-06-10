@@ -21,9 +21,15 @@ class SignUp : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LearnUiTheme {
-
+                SignUpScreen {email,password ->
+                    signUpUser(email,password)
+                }
             }
         }
+    }
+
+    private fun signUpUser(email: String, password: String) {
+
     }
 }
 

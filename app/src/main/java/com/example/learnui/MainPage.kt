@@ -16,9 +16,14 @@ import com.example.learnui.pages.TopicPage
 import com.example.learnui.ui.theme.LearnUiTheme
 
 class MainPage : ComponentActivity() {
+    private lateinit var database: LocalModelDatabase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        database = LocalModelDatabase.getDatabase(this)
+
         setContent {
             LearnUiTheme {
                 val navController = rememberNavController()
@@ -28,12 +33,12 @@ class MainPage : ComponentActivity() {
                     startDestination = "main"
                 ){
                     composable("main") {
-                        MainScreen(navController)
+                        MainScreen(navController, dao = database.dao)
                     }
 
                     composable("topics/{subject}"){ backStackEntry ->
                         val subjectName = backStackEntry.arguments?.getString("subject") ?: ""
-                        TopicPage(subjectName, navController)
+                        TopicPage(subjectName, navController, database.dao)
                     }
 
                     composable(

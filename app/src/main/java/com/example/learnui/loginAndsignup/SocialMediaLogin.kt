@@ -1,6 +1,8 @@
 package com.example.learnui.loginAndsignup
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,8 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.example.learnui.SignUp
 import com.example.learnui.ui.theme.BlueGray
 import com.example.learnui.ui.theme.LightBlueWhite
 

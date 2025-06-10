@@ -2,7 +2,9 @@ package com.example.learnui.ARCode
 
 
 import android.content.Context
+import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -13,14 +15,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -32,20 +43,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.example.learnui.R
 import com.google.android.filament.gltfio.Animator
 import com.google.firebase.storage.FirebaseStorage
 import io.github.sceneview.Scene
 import io.github.sceneview.math.Position
 import io.github.sceneview.node.ModelNode
-import io.github.sceneview.rememberCameraManipulator
 import io.github.sceneview.rememberCameraNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberNode
-import io.github.sceneview.rememberOnGestureListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -54,12 +68,14 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.sin
 
 @Composable
 fun ModelViewer(location: String, tts: String, name: String, navController: NavHostController) {
     val context = LocalContext.current
+
 
     //Decoding the encoded location and tts
     val decodedLocation =  URLDecoder.decode(location, StandardCharsets.UTF_8.toString())
@@ -81,7 +97,18 @@ fun ModelViewer(location: String, tts: String, name: String, navController: NavH
 
             // Download to cache first
             val tempFile = File(context.cacheDir, "$decodedName.glb")
+            val permanentFile = File(context.filesDir,"$decodedName.glb")
+            // If model exists in permanent storage, we're good
+            if (permanentFile.exists() && permanentFile.length() > 0) {
+                Log.d("ModelViewer", "Model found in permanent storage: ${permanentFile.absolutePath}")
+                isModelReady = true
+                isLoading = false
+                return@LaunchedEffect
+            }
+
+            // If model exists in cache, we're also good
             if (tempFile.exists() && tempFile.length() > 0) {
+                Log.d("ModelViewer", "Model found in cache: ${tempFile.absolutePath}")
                 isModelReady = true
                 isLoading = false
                 return@LaunchedEffect
@@ -170,23 +197,153 @@ private fun ModelLoaderPart(
     decodedTts: String,
     navController: NavHostController,
     ) {
-    var modelLoadError by remember { mutableStateOf<String?>(null) }
-    var modelNode by remember { mutableStateOf<ModelNode?>(null) }
-    var animator by remember { mutableStateOf<Animator?>(null) }
+    val modelLoadError by remember { mutableStateOf<String?>(null) }
+    val modelNode by remember { mutableStateOf<ModelNode?>(null) }
+    val animator by remember { mutableStateOf<Animator?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize().padding(bottom = 30.dp)) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column {
+            TopPart(modelNode, context, name, animator, modelLoadError)
+            BottomPart(decodedTts, decodedLocation, navController, name, context)
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BottomPart(
+    decodedTts: String,
+    decodedLocation: String,
+    navController: NavHostController,
+    name: String,
+    context: Context
+) {
+    //tts
+    lateinit var textToSpeech: TextToSpeech
+    textToSpeech = TextToSpeech(context) { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            val res: Int = textToSpeech.setLanguage(Locale.UK)
+            if(res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED){
+                Toast.makeText(context,"Lang not supported",Toast.LENGTH_LONG).show()
+            }
+        }else{
+            Toast.makeText(context,"Failed to initialize", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    val scrollState = rememberScrollState()
+    Box(
+        modifier = Modifier.fillMaxWidth().fillMaxHeight()
+    ) {
+        Column(modifier = Modifier.height(250.dp)) {
+            Text(
+                text = name,
+                modifier = Modifier.padding(start = 15.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp
+            )
+            Text(
+                modifier = Modifier.verticalScroll(scrollState).padding(15.dp),
+                text = decodedTts,
+                style = MaterialTheme.typography.bodyMedium,
+                fontSize = 15.sp
+            )
+        }
+        Row(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 50.dp)) {
+            Button(
+                modifier = Modifier.height(60.dp).width(170.dp),
+                onClick = {
+                    textToSpeech.speak(decodedTts,TextToSpeech.QUEUE_FLUSH,null)
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(id = R.color.dark_blue)
+                )
+            ) {
+                Row {
+                    Icon(
+                        modifier = Modifier.width(19.dp).height(19.dp),
+                        painter = painterResource(R.drawable.speaker_white),
+                        contentDescription = "speaker",
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Listen",
+                        style = MaterialTheme.typography.labelMedium.copy(Color.White)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(20.dp))
+
+            Button(
+                modifier = Modifier.height(60.dp).width(170.dp),
+                onClick = {
+                    val encodedModel =
+                        URLEncoder.encode(decodedLocation, StandardCharsets.UTF_8.toString())
+                    val encodedTTS =
+                        URLEncoder.encode(decodedTts, StandardCharsets.UTF_8.toString())
+                    val encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString())
+                    navController.popBackStack()
+                    navController.navigate("ar/$encodedModel/$encodedTTS/$encodedName")
+
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(id = R.color.purple)
+                )
+            ) {
+                Row {
+                    Icon(
+                        modifier = Modifier.width(19.dp).height(19.dp),
+                        painter = painterResource(R.drawable.cube_white),
+                        contentDescription = "Ar icon",
+                        tint = Color.White,
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "View in AR",
+                        style = MaterialTheme.typography.labelMedium.copy(Color.White)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopPart(
+    modelNode: ModelNode?,
+    context: Context,
+    name: String,
+    animator: Animator?,
+    modelLoadError: String?
+) {
+    var modelNode1 = modelNode
+    var animator1 = animator
+    var modelLoadError1 = modelLoadError
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.6f)
+            .padding(bottom = 30.dp)
+    ) {
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
 
         val centerNode = rememberNode(engine)
 
         val cameraNode = rememberCameraNode(engine) {
-            position = Position(y = -0.5f, z = 2.0f)
+            position = Position(y = 2.0f, z = 0.8f)
             lookAt(centerNode)
             centerNode.addChildNode(this)
         }
 
         val cameraTransition = rememberInfiniteTransition(label = "CameraTransition")
+
 
         // Smooth Y-axis rotation with easing
         val cameraRotationY by cameraTransition.animateFloat(
@@ -218,8 +375,8 @@ private fun ModelLoaderPart(
 
         // Subtle distance variation
         val cameraDistance by cameraTransition.animateFloat(
-            initialValue = 1.9f, // Tighter range
-            targetValue = 2.1f,
+            initialValue = 0.4f, // Tighter range
+            targetValue = 0.7f,
             animationSpec = infiniteRepeatable(
                 animation = tween(
                     durationMillis = 8000, // Different timing
@@ -231,7 +388,7 @@ private fun ModelLoaderPart(
         )
 
         // Apply the animations
-        LaunchedEffect(cameraRotationY, cameraVerticalOffset, cameraDistance, modelNode) {
+        LaunchedEffect(cameraRotationY, cameraVerticalOffset, cameraDistance, modelNode1) {
             cameraNode.apply {
                 val radians = Math.toRadians(cameraRotationY.toDouble())
 
@@ -253,24 +410,50 @@ private fun ModelLoaderPart(
             try {
                 Log.d("ModelLoader", "Starting model loading process...")
 
-                val modelFile = File(context.cacheDir, "$name.glb")
+                val cacheModelFile = File(context.cacheDir, "$name.glb")
+                val permanentModelFile = File(context.filesDir, "$name.glb")
 
-                if (!modelFile.exists()) {
-                    throw Exception("Model file not found: ${modelFile.absolutePath}")
+                // Determine which file to use (prefer permanent storage)
+                val modelFileToUse = when {
+                    permanentModelFile.exists() && permanentModelFile.length() > 0 -> {
+                        Log.d(
+                            "ModelLoader",
+                            "Using permanent model file: ${permanentModelFile.absolutePath}"
+                        )
+                        permanentModelFile
+                    }
+
+                    cacheModelFile.exists() && cacheModelFile.length() > 0 -> {
+                        Log.d(
+                            "ModelLoader",
+                            "Using cache model file: ${cacheModelFile.absolutePath}"
+                        )
+                        cacheModelFile
+                    }
+
+                    else -> {
+                        throw Exception("Model file not found in either cache or permanent storage")
+                    }
                 }
 
-                Log.d("ModelLoader", "Model file exists: ${modelFile.absolutePath}, size: ${modelFile.length()}")
+                Log.d(
+                    "ModelLoader",
+                    "Model file exists: ${modelFileToUse.absolutePath}, size: ${modelFileToUse.length()}"
+                )
 
-                // Read the model file as bytes and create a temporary file in cache
-                // that SceneView can access
-                val modelBytes = modelFile.readBytes()
+                // Read the model file bytes
+                val modelBytes = modelFileToUse.readBytes()
+
+                if (modelBytes.isEmpty()) {
+                    throw Exception("Model file is empty: ${modelFileToUse.absolutePath}")
+                }
+
 
                 /*// Create a new file with .glb extension in the app's cache directory
                 // Use a unique name to avoid conflicts
                 val tempModelFile = File(context.cacheDir, "sceneview_${System.currentTimeMillis()}.glb")*/
-                modelFile.writeBytes(modelBytes)
 
-                Log.d("ModelLoader", "Created temp file: ${modelFile.absolutePath}")
+                Log.d("ModelLoader", "Read ${modelBytes.size} bytes from model file")
 
                 // Try to load using the ByteBuffer approach
                 val byteBuffer = ByteBuffer.allocateDirect(modelBytes.size)
@@ -290,7 +473,7 @@ private fun ModelLoaderPart(
 
                 Log.d("ModelLoader", "Model instance created successfully")
 
-                modelNode = ModelNode(
+                modelNode1 = ModelNode(
                     modelInstance = modelInstance,
                     scaleToUnits = 0.25f
                 )
@@ -307,30 +490,29 @@ private fun ModelLoaderPart(
                     Log.d("ModelLoader", "Playing animation index: $animationIndex")
 
                     // Apply the animation
-                    modelAnimator.applyAnimation(animationIndex,0.0f)
+                    modelAnimator.applyAnimation(animationIndex, 0.0f)
 
                     // Get animation duration for looping
                     val animationDuration = modelAnimator.getAnimationDuration(animationIndex)
                     Log.d("ModelLoader", "Animation duration: $animationDuration seconds")
 
-                    animator = modelAnimator
+                    animator1 = modelAnimator
                 } else {
                     Log.d("ModelLoader", "Model has no animations")
                 }
 
 
-                centerNode.addChildNode(modelNode!!)
+                centerNode.addChildNode(modelNode1!!)
                 Log.d("ModelLoader", "Model successfully loaded and added to scene")
 
 
-
             } catch (e: Exception) {
-                modelLoadError = "Error loading 3D model: ${e.message}"
+                modelLoadError1 = "Error loading 3D model: ${e.message}"
                 Log.e("ModelLoader", "Model loading failed", e)
             }
         }
 
-        if (modelLoadError != null) {
+        if (modelLoadError1 != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -338,7 +520,7 @@ private fun ModelLoaderPart(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = modelLoadError!!,
+                    text = modelLoadError1!!,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(16.dp)
@@ -353,37 +535,16 @@ private fun ModelLoaderPart(
             engine = engine,
             modelLoader = modelLoader,
             cameraNode = cameraNode,
-            cameraManipulator = rememberCameraManipulator(
-                orbitHomePosition = Position(y = -0.5f, z = 2.0f),
+            /*cameraManipulator = rememberCameraManipulator(
+                orbitHomePosition = Position(y = 2.0f, z = -3f),
                 targetPosition = centerNode.worldPosition
-            ),
-            childNodes = listOfNotNull(centerNode, modelNode),
+            ),*/
+            childNodes = listOfNotNull(centerNode, modelNode1),
             // Remove onFrame since we handle lookAt in LaunchedEffect
-            onGestureListener = rememberOnGestureListener(
-                onDoubleTap = { _, node ->
-                    node?.apply {
-                        scale *= 1.5f // Reduced scaling factor
-                    }
+            /*onGestureListener = rememberOnGestureListener(
+                onDoubleTap = { _, _ ->
                 }
-            )
+            )*/
         )
-
-        Button(
-            modifier = Modifier.height(40.dp).width(90.dp).align(Alignment.BottomCenter),
-            onClick = {
-                val encodedModel = URLEncoder.encode("$decodedLocation", StandardCharsets.UTF_8.toString())
-                val encodedTTS = URLEncoder.encode("$decodedTts", StandardCharsets.UTF_8.toString())
-                val encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString())
-                navController.navigate("ar/$encodedModel/$encodedTTS/$encodedName"){
-                    popUpTo("main"){
-                        inclusive = true
-                    }
-                }
-
-            },
-            shape = RoundedCornerShape(10.dp)
-        ) {
-            Text(text = "View in your space")
-        }
     }
 }

@@ -1,8 +1,11 @@
+import org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin.Companion.findKaptConfiguration
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     id("com.google.gms.google-services")
+    id("kotlin-kapt")
 }
 
 android {
@@ -90,5 +93,10 @@ dependencies {
     implementation(libs.sceneview)
     implementation (libs.arsceneview)
 
+    //Room database
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
 
+    //Picassio
+    implementation(libs.picasso)
 }
