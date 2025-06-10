@@ -5,6 +5,7 @@ import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -34,6 +35,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.DisposableEffectResult
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -89,6 +92,7 @@ fun ModelViewer(location: String, tts: String, name: String, navController: NavH
     var isModelReady by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
 
     LaunchedEffect(decodedLocation) {
         try {
@@ -219,6 +223,7 @@ private fun BottomPart(
     name: String,
     context: Context
 ) {
+
     //tts
     lateinit var textToSpeech: TextToSpeech
     textToSpeech = TextToSpeech(context) { status ->
@@ -231,6 +236,13 @@ private fun BottomPart(
             Toast.makeText(context,"Failed to initialize", Toast.LENGTH_LONG).show()
         }
     }
+
+    BackHandler(
+        onBack = {
+            textToSpeech.stop()
+            navController.popBackStack()
+        }
+    )
 
     val scrollState = rememberScrollState()
     Box(

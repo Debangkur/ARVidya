@@ -4,28 +4,39 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +50,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -47,6 +59,7 @@ import com.example.learnui.DataClass.LocalModels
 import com.example.learnui.DataClass.Topic
 import com.example.learnui.Firebase.FirebaseRepository
 import com.example.learnui.LocalModelsDao
+import com.example.learnui.R
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -60,9 +73,12 @@ enum class DownloadState {
     DOWNLOADED
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopicPage(subject: String, navController: NavController, dao: LocalModelsDao) {
     var topics by remember { mutableStateOf(listOf<Topic>()) }
+    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
+    val cardColor = if(isSystemInDarkTheme()) Color(0xFF02263A) else Color(0xFFB1E4FB)
 
 
     LaunchedEffect(subject) {
@@ -72,15 +88,64 @@ fun TopicPage(subject: String, navController: NavController, dao: LocalModelsDao
         }
     }
 
-    LazyColumn(modifier = Modifier.padding(16.dp, top = 70.dp)) {
-        items(topics) { topic ->
-            TopicCard(topic = topic, navController = navController, dao)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.height(120.dp),
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = 20.dp)
+                    ) {
+                        Text(
+                            text = "Topics",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = textColor,
+                                fontSize = 28.sp
+                            ),
+                            modifier = Modifier.align(Alignment.BottomStart),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
         }
+    ) { paddingValues ->
+
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(
+                top = paddingValues.calculateTopPadding() + 80.dp,
+                start = 25.dp,
+                end = 25.dp,
+                bottom = 20.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(15.dp),
+            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(topics){ topic ->
+                TopicCard(topic = topic, navController = navController, dao, textColor, cardColor)
+            }
+        }
+        /*LazyColumn() {
+            items(topics) { topic ->
+                TopicCard(topic = topic, navController = navController, dao)
+            }
+        }*/
     }
 }
 
 @Composable
-private fun TopicCard(topic: Topic, navController: NavController, dao: LocalModelsDao) {
+private fun TopicCard(
+    topic: Topic,
+    navController: NavController,
+    dao: LocalModelsDao,
+    textColor: Color,
+    cardColor: Color
+) {
     var imageUrl by remember { mutableStateOf<String?>(null) }
     var downloadState by remember { mutableStateOf(DownloadState.NOT_DOWNLOADED) }
     val coroutineScope = rememberCoroutineScope()
@@ -118,7 +183,7 @@ private fun TopicCard(topic: Topic, navController: NavController, dao: LocalMode
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .height(200.dp)
             .clickable {
                 val encodedModel = URLEncoder.encode(topic.location, StandardCharsets.UTF_8.toString())
                 val encodedTTS = URLEncoder.encode(topic.tts, StandardCharsets.UTF_8.toString())
@@ -126,11 +191,17 @@ private fun TopicCard(topic: Topic, navController: NavController, dao: LocalMode
                 navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
             },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(8.dp)
+        elevation = CardDefaults.cardElevation(8.dp),
+        colors = CardColors(
+            containerColor = cardColor,
+            contentColor = Color.Unspecified,
+            disabledContentColor = Color.Unspecified,
+            disabledContainerColor = Color.Unspecified
+        )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(16.dp)
             ) {
                 if (imageUrl != null) {
@@ -138,22 +209,28 @@ private fun TopicCard(topic: Topic, navController: NavController, dao: LocalMode
                         model = imageUrl,
                         contentDescription = topic.name,
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape),
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.73f),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     // Placeholder or loading fallback
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.73f)
                             .background(Color.Gray)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(text = topic.name, fontSize = 20.sp)
+                Spacer(modifier = Modifier.height(15.dp))
+
+                Text(
+                    modifier = Modifier,
+                    text = topic.name,
+                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.labelMedium.copy(color = textColor)
+                )
             }
             IconButton(
                 onClick = {
@@ -206,7 +283,7 @@ private fun TopicCard(topic: Topic, navController: NavController, dao: LocalMode
                 when (downloadState) {
                     DownloadState.NOT_DOWNLOADED -> {
                         Icon(
-                            imageVector = Icons.Default.Add,
+                            painter = painterResource(R.drawable.download) ,
                             contentDescription = "Download",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)

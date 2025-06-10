@@ -40,25 +40,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.learnui.DataClass.LocalModels
 import com.example.learnui.LocalModelsDao
+import com.example.learnui.R
 import kotlinx.coroutines.launch
 import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 @Composable
-fun DownloadPage(modifier: Modifier = Modifier, dao: LocalModelsDao, navController: NavController) {
+fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
     val downloadedModels by dao.getModelList().collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
@@ -77,7 +79,7 @@ fun DownloadPage(modifier: Modifier = Modifier, dao: LocalModelsDao, navControll
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        painterResource(R.drawable.download),
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = Color.Gray
