@@ -1,8 +1,11 @@
 package com.example.learnui.ARCode
 
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -28,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,8 +40,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.DisposableEffectResult
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +68,7 @@ import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberNode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -193,6 +198,11 @@ fun ModelViewer(location: String, tts: String, name: String, navController: NavH
     }
 }
 
+enum class ttsState{
+    PLAYING,
+    NOT_PLAYING
+}
+
 @Composable
 private fun ModelLoaderPart(
     context: Context,
@@ -214,6 +224,7 @@ private fun ModelLoaderPart(
 }
 
 
+@SuppressLint("UnrememberedMutableState")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BottomPart(
@@ -224,29 +235,73 @@ private fun BottomPart(
     context: Context
 ) {
 
-    //tts
-    lateinit var textToSpeech: TextToSpeech
-    textToSpeech = TextToSpeech(context) { status ->
-        if (status == TextToSpeech.SUCCESS) {
-            val res: Int = textToSpeech.setLanguage(Locale.UK)
-            if(res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED){
-                Toast.makeText(context,"Lang not supported",Toast.LENGTH_LONG).show()
+    var speakerState by remember { mutableStateOf(ttsState.NOT_PLAYING) }
+
+    // TTS initialization with proper state management
+    var textToSpeech by remember { mutableStateOf<TextToSpeech?>(null) }
+    var isTtsInitialized by remember { mutableStateOf(false) }
+
+    // Initialize TTS
+    LaunchedEffect(Unit) {
+        textToSpeech = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                val res: Int = textToSpeech?.setLanguage(Locale.UK) ?: TextToSpeech.LANG_NOT_SUPPORTED
+                if(res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED){
+                    Toast.makeText(context,"Lang not supported",Toast.LENGTH_LONG).show()
+                } else {
+                    isTtsInitialized = true
+                }
+            }else{
+                Toast.makeText(context,"Failed to initialize", Toast.LENGTH_LONG).show()
             }
-        }else{
-            Toast.makeText(context,"Failed to initialize", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Set up TTS completion listener when TTS is initialized
+    LaunchedEffect(isTtsInitialized) {
+        if (isTtsInitialized && textToSpeech != null) {
+            textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {
+                    // TTS started - no need to change state as it's already set
+                }
+
+                override fun onDone(utteranceId: String?) {
+                    // TTS completed - reset state on main thread
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        speakerState = ttsState.NOT_PLAYING
+                    }
+                }
+
+                override fun onError(utteranceId: String?) {
+                    // TTS error - reset state on main thread
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        speakerState = ttsState.NOT_PLAYING
+                    }
+                }
+            })
+        }
+    }
+
+    // Cleanup TTS when composable is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            textToSpeech?.stop()
+            textToSpeech?.shutdown()
         }
     }
 
     BackHandler(
         onBack = {
-            textToSpeech.stop()
+            textToSpeech?.stop()
             navController.popBackStack()
         }
     )
 
     val scrollState = rememberScrollState()
     Box(
-        modifier = Modifier.fillMaxWidth().fillMaxHeight()
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
     ) {
         Column(modifier = Modifier.height(250.dp)) {
             Text(
@@ -257,42 +312,87 @@ private fun BottomPart(
                 fontSize = 30.sp
             )
             Text(
-                modifier = Modifier.verticalScroll(scrollState).padding(15.dp),
+                modifier = Modifier
+                    .verticalScroll(scrollState)
+                    .padding(15.dp),
                 text = decodedTts,
                 style = MaterialTheme.typography.bodyMedium,
                 fontSize = 15.sp
             )
         }
-        Row(modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 50.dp)) {
+        Row(modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 50.dp)) {
             Button(
-                modifier = Modifier.height(60.dp).width(170.dp),
+                modifier = Modifier
+                    .height(60.dp)
+                    .width(170.dp),
                 onClick = {
-                    textToSpeech.speak(decodedTts,TextToSpeech.QUEUE_FLUSH,null)
+                    // Check if TTS is initialized before using it
+                    if (isTtsInitialized && textToSpeech != null) {
+                        when(speakerState) {
+                            ttsState.PLAYING -> {
+                                textToSpeech?.stop()
+                                speakerState = ttsState.NOT_PLAYING
+                            }
+                            ttsState.NOT_PLAYING -> {
+                                // Use the older API that works more reliably
+                                val params = HashMap<String, String>()
+                                params[TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID] = "tts_utterance_id"
+                                textToSpeech?.speak(decodedTts, TextToSpeech.QUEUE_FLUSH, params)
+                                speakerState = ttsState.PLAYING
+                            }
+                        }
+                    } else {
+                        Toast.makeText(context, "TTS not ready yet", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(id = R.color.dark_blue)
-                )
+                colors = buttonColor(speakerState)
             ) {
                 Row {
-                    Icon(
-                        modifier = Modifier.width(19.dp).height(19.dp),
-                        painter = painterResource(R.drawable.speaker_white),
-                        contentDescription = "speaker",
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Listen",
-                        style = MaterialTheme.typography.labelMedium.copy(Color.White)
-                    )
+
+                    when(speakerState){
+                        ttsState.PLAYING -> {
+                            Icon(
+                                modifier = Modifier
+                                    .width(19.dp)
+                                    .height(19.dp),
+                                painter = painterResource(R.drawable.stop),
+                                contentDescription = "stop",
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Stop",
+                                style = MaterialTheme.typography.labelMedium.copy(Color.White)
+                            )
+                        }
+                        ttsState.NOT_PLAYING -> {
+                            Icon(
+                                modifier = Modifier
+                                    .width(19.dp)
+                                    .height(19.dp),
+                                painter = painterResource(R.drawable.speaker_white),
+                                contentDescription = "speaker",
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Listen",
+                                style = MaterialTheme.typography.labelMedium.copy(Color.White)
+                            )
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.width(20.dp))
 
             Button(
-                modifier = Modifier.height(60.dp).width(170.dp),
+                modifier = Modifier
+                    .height(60.dp)
+                    .width(170.dp),
                 onClick = {
                     val encodedModel =
                         URLEncoder.encode(decodedLocation, StandardCharsets.UTF_8.toString())
@@ -310,7 +410,9 @@ private fun BottomPart(
             ) {
                 Row {
                     Icon(
-                        modifier = Modifier.width(19.dp).height(19.dp),
+                        modifier = Modifier
+                            .width(19.dp)
+                            .height(19.dp),
                         painter = painterResource(R.drawable.cube_white),
                         contentDescription = "Ar icon",
                         tint = Color.White,
@@ -322,6 +424,18 @@ private fun BottomPart(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun buttonColor(speakerState: ttsState): ButtonColors {
+    return when(speakerState){
+        ttsState.PLAYING -> {
+            ButtonDefaults.buttonColors(containerColor = Color(0xFFF50A1F))
+        }
+        ttsState.NOT_PLAYING -> {
+            ButtonDefaults.buttonColors(containerColor = colorResource(R.color.dark_blue))
         }
     }
 }

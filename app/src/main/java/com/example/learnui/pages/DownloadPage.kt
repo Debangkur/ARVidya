@@ -1,34 +1,42 @@
 package com.example.learnui.pages
 
+import android.annotation.SuppressLint
 import android.graphics.BitmapFactory
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -42,8 +50,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.learnui.DataClass.LocalModels
 import com.example.learnui.LocalModelsDao
@@ -53,80 +61,110 @@ import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
+@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
     val downloadedModels by dao.getModelList().collectAsState(initial = emptyList())
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            text = "Downloaded Models",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        if (downloadedModels.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = 20.dp)
+                    ) {
+                        Text(
+                            text = "Downloaded Models",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                color = textColor,
+                                fontSize = 28.sp
+                            ),
+                            modifier = Modifier.align(Alignment.BottomStart),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            if (downloadedModels.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        painterResource(R.drawable.download),
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "No downloaded models",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tap the download icon on any model to save it here",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.download),
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No downloaded models",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Tap the download icon on any model to save it here",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            )  {
-                items(downloadedModels) { model ->
-                    DownloadedModelCard(
-                        navController,
-                        model = model,
-                        onDelete = {
-                            coroutineScope.launch {
-                                try {
-                                    dao.deleteModel(model)
-                                    Toast.makeText(
-                                        context,
-                                        "${model.name} deleted successfully!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } catch (e: Exception) {
-                                    Log.e("DownloadPage", "Failed to delete model", e)
-                                    Toast.makeText(
-                                        context,
-                                        "Failed to delete ${model.name}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(
+                        top = innerPadding.calculateTopPadding() + 80.dp,
+                        start = 25.dp,
+                        end = 25.dp,
+                        bottom = 20.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(15.dp),
+                    horizontalArrangement = Arrangement.spacedBy(15.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(downloadedModels) { model ->
+                        DownloadedModelCard(
+                            navController,
+                            model = model,
+                            onDelete = {
+                                coroutineScope.launch {
+                                    try {
+                                        dao.deleteModel(model)
+                                        Toast.makeText(
+                                            context,
+                                            "${model.name} deleted successfully!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } catch (e: Exception) {
+                                        Log.e("DownloadPage", "Failed to delete model", e)
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to delete ${model.name}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
-                            }
-                        }
-                    )
+                            },
+                            textColor
+                        )
+                    }
                 }
             }
         }
@@ -134,31 +172,38 @@ fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
 }
 
 @Composable
-fun DownloadedModelCard(navController: NavController, model: LocalModels, onDelete: () -> Unit) {
+fun DownloadedModelCard(
+    navController: NavController,
+    model: LocalModels,
+    onDelete: () -> Unit,
+    textColor: Color
+) {
     val context = LocalContext.current
+    val cardColor = if(isSystemInDarkTheme()) Color(0xFF02263A) else Color(0xFFB1E4FB)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(200.dp)
             .clickable {
                 val encodedModel = URLEncoder.encode(model.location, StandardCharsets.UTF_8.toString())
                 val encodedTTS = URLEncoder.encode(model.tts, StandardCharsets.UTF_8.toString())
                 val encodedName = URLEncoder.encode(model.name, StandardCharsets.UTF_8.toString())
                 navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
             },
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(8.dp),
+        colors = CardColors(
+            containerColor = cardColor,
+            contentColor = Color.Unspecified,
+            disabledContentColor = Color.Unspecified,
+            disabledContainerColor = Color.Unspecified
+        )
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Image section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.Gray.copy(alpha = 0.1f))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp)
             ) {
                 val imageFile = File(context.filesDir, "${model.name}.jpg")
 
@@ -171,31 +216,39 @@ fun DownloadedModelCard(navController: NavController, model: LocalModels, onDele
                         Image(
                             bitmap = bitmap.asImageBitmap(),
                             contentDescription = "Model image for ${model.name}",
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.7f),
                             contentScale = ContentScale.Crop
                         )
                     } else {
                         // Fallback icon if image can't be decoded
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = "No image available",
+                        Box(
                             modifier = Modifier
-                                .size(48.dp)
-                                .align(Alignment.Center),
-                            tint = Color.Gray
+                                .fillMaxWidth()
+                                .fillMaxHeight(0.7f)
+                                .background(Color.Gray)
                         )
                     }
                 } else {
                     // Fallback icon if image doesn't exist
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "No image available",
+                    Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.Center),
-                        tint = Color.Gray
+                            .fillMaxWidth()
+                            .fillMaxHeight(0.7f)
+                            .background(Color.Gray)
                     )
                 }
+                // Name section
+                Spacer(modifier = Modifier.height(15.dp))
+
+                Text(
+                    modifier = Modifier,
+                    text = model.name,
+                    fontSize = 20.sp,
+                    style = MaterialTheme.typography.labelMedium.copy(color = textColor)
+                )
+            }
 
                 // Delete button overlay
                 IconButton(
@@ -210,29 +263,12 @@ fun DownloadedModelCard(navController: NavController, model: LocalModels, onDele
                         .size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Clear,
+                        painterResource(R.drawable.dustbin),
                         contentDescription = "Delete model",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )
                 }
-            }
-
-            // Name section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = model.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
         }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -42,6 +43,7 @@ fun SignUpScreen(onSignUp: (String, String) -> Unit) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
     Surface {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -62,11 +64,15 @@ fun SignUpScreen(onSignUp: (String, String) -> Unit) {
                     onEmailChanged = {email = it },
                     password = password,
                     onPasswordChanged = {password = it},
-                    onSignUpClick = {onSignUp(email,password)}
+                    onSignUpClick = {
+                        if(email.isNotEmpty() && password.isNotEmpty()) isLoading = true
+                        onSignUp(email,password)
+                    },
+                    isLoading = isLoading
                 )
                 Spacer(modifier = Modifier.height(30.dp))
 
-                SocialMediaSection()
+                /*SocialMediaSection()*/
 
             }
         }
@@ -82,7 +88,8 @@ fun SignUpTopSection() {
     ) {
         Image(
             modifier = Modifier.fillMaxWidth()
-                .fillMaxHeight(fraction = 0.5f),
+                .fillMaxHeight(fraction = 0.5f)
+                .padding(top = 20.dp),
             painter = painterResource(if (isSystemInDarkTheme()) R.drawable.shape_night else R.drawable.shape),
             contentDescription = null
         )
@@ -121,47 +128,54 @@ private fun SignUpSection(
     onEmailChanged: (String) -> Unit,
     password: String,
     onPasswordChanged: (String) -> Unit,
-    onSignUpClick: () -> Unit
+    onSignUpClick: () -> Unit,
+    isLoading: Boolean
 ){
-    LoginTextField(
+    SignUpTextField(
         label = "Username",
-        trailing = "",
         modifier = Modifier.fillMaxWidth(),
         value = username,
         onValueChanged = onUsernameChanged
     )
-    Spacer(modifier = Modifier.height(15.dp))
+    Spacer(modifier = Modifier.height(23.dp))
 
-    LoginTextField(label = "Email",
-        trailing = "",
+    SignUpTextField(label = "Email",
         modifier = Modifier.fillMaxWidth(),
         value = email,
         onValueChanged = onEmailChanged
     )
-    Spacer(modifier = Modifier.height(15.dp))
+    Spacer(modifier = Modifier.height(23.dp))
 
-    LoginTextField(label = "Password",
-        trailing = "Forgot?",
+    SignUpTextField(label = "Password",
         modifier = Modifier.fillMaxWidth(),
         value = password,
         onValueChanged = onPasswordChanged
     )
-    Spacer(modifier = Modifier.height(15.dp))
+    Spacer(modifier = Modifier.height(23.dp))
 
     Button(
         modifier = Modifier
             .fillMaxWidth()
             .height(40.dp),
         onClick = onSignUpClick,
+        enabled = !isLoading,
         colors = ButtonDefaults.buttonColors(
             containerColor = if (isSystemInDarkTheme()) BlueGray else Black,
             contentColor = Color.White
         ),
         shape = RoundedCornerShape(size = 4.dp)
     ) {
-        Text(
-            text = "Log in",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                color = Color.White,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text(
+                text = "Log in",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
+            )
+        }
     }
 }
