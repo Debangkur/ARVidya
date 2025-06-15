@@ -65,7 +65,7 @@ fun SignUpScreen(onSignUp: (String, String) -> Unit) {
                     password = password,
                     onPasswordChanged = {password = it},
                     onSignUpClick = {
-                        if(email.isNotEmpty() && password.isNotEmpty()) isLoading = true
+                        isLoading = email.isNotEmpty() && password.isNotEmpty()
                         onSignUp(email,password)
                     },
                     isLoading = isLoading

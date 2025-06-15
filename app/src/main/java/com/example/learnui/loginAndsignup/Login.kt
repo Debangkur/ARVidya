@@ -74,7 +74,7 @@ fun LoginScreen(onLogin: (String, String) -> Unit) {
                     password = password,
                     onPasswordChanged = {password = it},
                     onLoginClick = {
-                        if(email.isNotEmpty() && password.isNotEmpty()) isLoading = true
+                        isLoading = email.isNotEmpty() && password.isNotEmpty()
                         onLogin(email, password)
                     },
                     isLoading = isLoading

@@ -63,10 +63,12 @@ import com.google.firebase.storage.FirebaseStorage
 import io.github.sceneview.Scene
 import io.github.sceneview.math.Position
 import io.github.sceneview.node.ModelNode
+import io.github.sceneview.rememberCameraManipulator
 import io.github.sceneview.rememberCameraNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
 import io.github.sceneview.rememberNode
+import io.github.sceneview.rememberOnGestureListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -217,7 +219,7 @@ private fun ModelLoaderPart(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column {
-            TopPart(modelNode, context, name, animator, modelLoadError)
+            TopPart(modelNode, context, name, modelLoadError)
             BottomPart(decodedTts, decodedLocation, navController, name, context)
         }
     }
@@ -445,12 +447,11 @@ private fun TopPart(
     modelNode: ModelNode?,
     context: Context,
     name: String,
-    animator: Animator?,
     modelLoadError: String?
 ) {
     var modelNode1 = modelNode
-    var animator1 = animator
     var modelLoadError1 = modelLoadError
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -463,74 +464,15 @@ private fun TopPart(
         val centerNode = rememberNode(engine)
 
         val cameraNode = rememberCameraNode(engine) {
-            position = Position(y = 2.0f, z = 0.8f)
+            position = Position(y = 0.3f, z = 0.4f)
             lookAt(centerNode)
             centerNode.addChildNode(this)
         }
 
+/*
         val cameraTransition = rememberInfiniteTransition(label = "CameraTransition")
+*/
 
-
-        // Smooth Y-axis rotation with easing
-        val cameraRotationY by cameraTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 15000, // Even slower for better viewing
-                    easing = LinearEasing
-                ),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "CameraRotationY"
-        )
-
-        // Gentle vertical bobbing motion
-        val cameraVerticalOffset by cameraTransition.animateFloat(
-            initialValue = -0.05f, // Reduced range for subtlety
-            targetValue = 0.05f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 5000, // Different timing to avoid sync
-                    easing = FastOutSlowInEasing
-                ),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "CameraVerticalOffset"
-        )
-
-        // Subtle distance variation
-        val cameraDistance by cameraTransition.animateFloat(
-            initialValue = 0.4f, // Tighter range
-            targetValue = 0.7f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 8000, // Different timing
-                    easing = FastOutSlowInEasing
-                ),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "CameraDistance"
-        )
-
-        // Apply the animations
-        LaunchedEffect(cameraRotationY, cameraVerticalOffset, cameraDistance, modelNode1) {
-            cameraNode.apply {
-                val radians = Math.toRadians(cameraRotationY.toDouble())
-
-                // Calculate new position
-                val newPosition = Position(
-                    x = sin(radians).toFloat() * cameraDistance,
-                    y = -0.5f + cameraVerticalOffset,
-                    z = cos(radians).toFloat() * cameraDistance
-                )
-
-                position = newPosition
-
-                // Always look at the center - this ensures smooth tracking
-                lookAt(centerNode)
-            }
-        }
 
         LaunchedEffect(Unit) {
             try {
@@ -604,29 +546,6 @@ private fun TopPart(
                     scaleToUnits = 0.25f
                 )
 
-                // Create animator for the model
-                val modelAnimator = modelInstance.animator
-
-                // Check if model has animations
-                if (modelAnimator.animationCount > 0) {
-                    Log.d("ModelLoader", "Model has ${modelAnimator.animationCount} animation(s)")
-
-                    // Play first animation (or choose specific one)
-                    val animationIndex = 0 // Choose which animation to play
-                    Log.d("ModelLoader", "Playing animation index: $animationIndex")
-
-                    // Apply the animation
-                    modelAnimator.applyAnimation(animationIndex, 0.0f)
-
-                    // Get animation duration for looping
-                    val animationDuration = modelAnimator.getAnimationDuration(animationIndex)
-                    Log.d("ModelLoader", "Animation duration: $animationDuration seconds")
-
-                    animator1 = modelAnimator
-                } else {
-                    Log.d("ModelLoader", "Model has no animations")
-                }
-
 
                 centerNode.addChildNode(modelNode1!!)
                 Log.d("ModelLoader", "Model successfully loaded and added to scene")
@@ -661,16 +580,19 @@ private fun TopPart(
             engine = engine,
             modelLoader = modelLoader,
             cameraNode = cameraNode,
-            /*cameraManipulator = rememberCameraManipulator(
-                orbitHomePosition = Position(y = 2.0f, z = -3f),
+            cameraManipulator = rememberCameraManipulator(
+                orbitHomePosition = cameraNode.worldPosition,
                 targetPosition = centerNode.worldPosition
-            ),*/
+            ),
             childNodes = listOfNotNull(centerNode, modelNode1),
-            // Remove onFrame since we handle lookAt in LaunchedEffect
-            /*onGestureListener = rememberOnGestureListener(
-                onDoubleTap = { _, _ ->
+            //Remove onFrame since we handle lookAt in LaunchedEffect
+            onGestureListener = rememberOnGestureListener(
+                onDoubleTap = { _, node ->
+                    node?.apply {
+                        scale *= 2.0f
+                    }
                 }
-            )*/
+            )
         )
     }
 }

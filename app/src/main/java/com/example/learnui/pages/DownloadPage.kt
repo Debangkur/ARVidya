@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,8 +25,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
@@ -34,14 +34,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +60,7 @@ import androidx.navigation.NavController
 import com.example.learnui.DataClass.LocalModels
 import com.example.learnui.LocalModelsDao
 import com.example.learnui.R
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.io.File
 import java.net.URLEncoder
@@ -130,10 +135,10 @@ fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(
-                        top = innerPadding.calculateTopPadding() + 80.dp,
+                        top = innerPadding.calculateTopPadding() + 50.dp,
                         start = 25.dp,
                         end = 25.dp,
-                        bottom = 20.dp
+                        bottom = 100.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(15.dp),
                     horizontalArrangement = Arrangement.spacedBy(15.dp),
@@ -146,12 +151,42 @@ fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
                             onDelete = {
                                 coroutineScope.launch {
                                     try {
+                                        // Delete the model file first
+                                        val modelFile = File(context.filesDir, "${model.name}.glb")
+                                        var modelFileDeleted = true
+                                        if (modelFile.exists()) {
+                                            modelFileDeleted = modelFile.delete()
+                                            if (!modelFileDeleted) {
+                                                Log.w("DownloadPage", "Failed to delete model file: ${model.location}")
+                                            }
+                                        }
+
+                                        // Delete the image file
+                                        val imageFile = File(context.filesDir, "${model.name}.jpg")
+                                        var imageFileDeleted = true
+                                        if (imageFile.exists()) {
+                                            imageFileDeleted = imageFile.delete()
+                                            if (!imageFileDeleted) {
+                                                Log.w("DownloadPage", "Failed to delete image file: ${imageFile.absolutePath}")
+                                            }
+                                        }
+
                                         dao.deleteModel(model)
-                                        Toast.makeText(
-                                            context,
-                                            "${model.name} deleted successfully!",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+
+                                        // Show appropriate toast message
+                                        if (modelFileDeleted && imageFileDeleted) {
+                                            Toast.makeText(
+                                                context,
+                                                "${model.name} and associated files deleted successfully!",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "${model.name} deleted from database, but some files may remain",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
                                     } catch (e: Exception) {
                                         Log.e("DownloadPage", "Failed to delete model", e)
                                         Toast.makeText(
@@ -171,15 +206,17 @@ fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadedModelCard(
     navController: NavController,
     model: LocalModels,
     onDelete: () -> Unit,
-    textColor: Color
+    textColor: Color,
 ) {
     val context = LocalContext.current
     val cardColor = if(isSystemInDarkTheme()) Color(0xFF02263A) else Color(0xFFB1E4FB)
+    var showDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -252,7 +289,7 @@ fun DownloadedModelCard(
 
                 // Delete button overlay
                 IconButton(
-                    onClick = onDelete,
+                    onClick = {showDialog = true},
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
@@ -269,6 +306,35 @@ fun DownloadedModelCard(
                         modifier = Modifier.size(18.dp)
                     )
                 }
+
+            if(showDialog){
+                BasicAlertDialog(
+                    onDismissRequest = { showDialog = false }
+                ){
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 6.dp
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text("Are you sure?")
+                            Row(
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                TextButton(onClick = { showDialog = false }) {
+                                    Text("No")
+                                }
+                                TextButton(onClick = onDelete) {
+                                    Text("Yes")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
