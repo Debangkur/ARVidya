@@ -282,7 +282,7 @@ fun DownloadedModelCard(
                 Text(
                     modifier = Modifier,
                     text = model.name,
-                    fontSize = 20.sp,
+                    fontSize = 15.sp,
                     style = MaterialTheme.typography.labelMedium.copy(color = textColor)
                 )
             }
@@ -327,7 +327,10 @@ fun DownloadedModelCard(
                                 TextButton(onClick = { showDialog = false }) {
                                     Text("No")
                                 }
-                                TextButton(onClick = onDelete) {
+                                TextButton(onClick = {
+                                    showDialog = false
+                                    onDelete()
+                                }) {
                                     Text("Yes")
                                 }
                             }

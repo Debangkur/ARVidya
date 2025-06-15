@@ -4,6 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -30,7 +36,7 @@ class MainPage : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = "main"
+                    startDestination = "main",
                 ){
                     composable("main") {
                         MainScreen(navController, dao = database.dao)
@@ -53,7 +59,26 @@ class MainPage : ComponentActivity() {
                             navArgument(name = "name"){
                                 type = NavType.StringType
                             }
-                        )
+                        ),
+                        // Custom animations for Model Viewer
+                        enterTransition = {
+                            slideInHorizontally(
+                                initialOffsetX = { -it },
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = FastOutSlowInEasing
+                                )
+                            ) + fadeIn(animationSpec = tween(400))
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(
+                                targetOffsetX = { -it },
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = FastOutSlowInEasing
+                                )
+                            ) + fadeOut(animationSpec = tween(400))
+                        }
                     ){ backStackEntry ->
                         val location = backStackEntry.arguments?.getString("location") ?: ""
                         val tts = backStackEntry.arguments?.getString("tts") ?: ""
@@ -73,7 +98,26 @@ class MainPage : ComponentActivity() {
                             navArgument(name = "name"){
                                 type = NavType.StringType
                             }
-                        )
+                        ),
+                        // Custom animations for AR Viewer
+                        enterTransition = {
+                            slideInHorizontally(
+                                initialOffsetX = { it },
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = FastOutSlowInEasing
+                                )
+                            ) + fadeIn(animationSpec = tween(400))
+                        },
+                        exitTransition = {
+                            slideOutHorizontally(
+                                targetOffsetX = { it },
+                                animationSpec = tween(
+                                    durationMillis = 400,
+                                    easing = FastOutSlowInEasing
+                                )
+                            ) + fadeOut(animationSpec = tween(400))
+                        }
                     ){ backStackEntry ->
                         val location = backStackEntry.arguments?.getString("location") ?: ""
                         val tts = backStackEntry.arguments?.getString("tts") ?: ""

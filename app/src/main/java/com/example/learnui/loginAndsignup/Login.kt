@@ -98,7 +98,7 @@ private fun NewAccountCreation() {
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(fraction = 0.8f)
-            .padding(bottom = 10.dp),
+            .padding(bottom = 20.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
 

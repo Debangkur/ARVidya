@@ -2,11 +2,19 @@ package com.example.learnui.ARCode
 
 import android.content.Context
 import android.util.Log
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -56,13 +64,20 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 @Composable
 fun ARViewer(location: String, tts: String, name: String, navController: NavHostController) {
     val context = LocalContext.current
+    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
+
+    //Decoding the encoded location and tts
+    val decodedLocation =  URLDecoder.decode(location, StandardCharsets.UTF_8.toString())
+    val decodedTts = URLDecoder.decode(tts, StandardCharsets.UTF_8.toString())
     val decodedName = URLDecoder.decode(name, StandardCharsets.UTF_8.toString())
+
 
 
     Box(modifier = Modifier.fillMaxSize()){
@@ -87,6 +102,7 @@ fun ARViewer(location: String, tts: String, name: String, navController: NavHost
             mutableStateOf<TrackingFailureReason?>(null)
         }
         var frame by remember { mutableStateOf<Frame?>(null) }
+
 
         // Cleanup effect when leaving the composable
         DisposableEffect(Unit) {
@@ -214,6 +230,27 @@ fun ARViewer(location: String, tts: String, name: String, navController: NavHost
                 else -> stringResource(R.string.tap_anywhere_to_add_model)
             }
         )
+
+        Button(
+            modifier = Modifier
+                .fillMaxWidth(0.4f).height(80.dp)
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 25.dp),
+              onClick = {
+                  val encodedModel = URLEncoder.encode(decodedLocation, StandardCharsets.UTF_8.toString())
+                  val encodedTTS = URLEncoder.encode(decodedTts, StandardCharsets.UTF_8.toString())
+                  val encodedName = URLEncoder.encode(decodedName, StandardCharsets.UTF_8.toString())
+                  navController.popBackStack()
+                  navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
+              },
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                "View only Model",
+                color = textColor,
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
     }
 }
 
