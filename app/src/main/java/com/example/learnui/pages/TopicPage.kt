@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -99,7 +100,9 @@ fun TopicPage(subject: String, navController: NavController, dao: LocalModelsDao
                         modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = 20.dp)
                     ) {
                         Text(
-                            text = "Topics",
+                            text = subject.replaceFirstChar {
+                                it.uppercase()
+                            },
                             style = MaterialTheme.typography.labelLarge.copy(
                                 color = textColor,
                                 fontSize = 28.sp

@@ -1,5 +1,6 @@
 package com.example.learnui.pages
 
+import android.annotation.SuppressLint
 import android.provider.CalendarContract.Colors
 import android.util.Log
 import androidx.compose.foundation.background
@@ -48,6 +49,7 @@ import com.example.learnui.Firebase.FirebaseRepository
 import com.example.learnui.R
 import kotlin.random.Random
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(navController: NavController) {

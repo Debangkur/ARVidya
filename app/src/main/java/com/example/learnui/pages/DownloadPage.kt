@@ -78,6 +78,7 @@ fun DownloadPage(dao: LocalModelsDao, navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.height(120.dp),
                 title = {
                     Box(
                         modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(bottom = 20.dp)

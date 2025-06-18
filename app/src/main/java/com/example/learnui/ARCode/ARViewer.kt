@@ -4,17 +4,23 @@ import android.content.Context
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -28,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -71,188 +78,209 @@ import java.nio.charset.StandardCharsets
 @Composable
 fun ARViewer(location: String, tts: String, name: String, navController: NavHostController) {
     val context = LocalContext.current
-    val textColor = if(isSystemInDarkTheme()) Color.White else Color.Black
+    val textColor = if (isSystemInDarkTheme()) Color.White else Color.Black
 
     //Decoding the encoded location and tts
-    val decodedLocation =  URLDecoder.decode(location, StandardCharsets.UTF_8.toString())
+    val decodedLocation = URLDecoder.decode(location, StandardCharsets.UTF_8.toString())
     val decodedTts = URLDecoder.decode(tts, StandardCharsets.UTF_8.toString())
     val decodedName = URLDecoder.decode(name, StandardCharsets.UTF_8.toString())
 
 
 
-    Box(modifier = Modifier.fillMaxSize()){
-        // The destroy calls are automatically made when their disposable effect leaves
-        // the composition or its key changes.
-        val engine = rememberEngine()
-        val modelLoader = rememberModelLoader(engine)
-        val materialLoader = rememberMaterialLoader(engine)
-        val cameraNode = rememberARCameraNode(engine)
-        val childNodes = rememberNodes()
-        val view = rememberView(engine)
-        val collisionSystem = rememberCollisionSystem(view)
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // The destroy calls are automatically made when their disposable effect leaves
+            // the composition or its key changes.
+            val engine = rememberEngine()
+            val modelLoader = rememberModelLoader(engine)
+            val materialLoader = rememberMaterialLoader(engine)
+            val cameraNode = rememberARCameraNode(engine)
+            val childNodes = rememberNodes()
+            val view = rememberView(engine)
+            val collisionSystem = rememberCollisionSystem(view)
 
-        // State for model loading
-        var modelInstance by remember { mutableStateOf<ModelInstance?>(null) }
-        var modelLoadError by remember { mutableStateOf<String?>(null) }
-        var isModelLoading by remember { mutableStateOf(true) }
+            // State for model loading
+            var modelInstance by remember { mutableStateOf<ModelInstance?>(null) }
+            var modelLoadError by remember { mutableStateOf<String?>(null) }
+            var isModelLoading by remember { mutableStateOf(true) }
 
-        var planeRenderer by remember { mutableStateOf(true) }
+            var planeRenderer by remember { mutableStateOf(true) }
 
-        var trackingFailureReason by remember {
-            mutableStateOf<TrackingFailureReason?>(null)
-        }
-        var frame by remember { mutableStateOf<Frame?>(null) }
+            var trackingFailureReason by remember {
+                mutableStateOf<TrackingFailureReason?>(null)
+            }
+            var frame by remember { mutableStateOf<Frame?>(null) }
 
 
-        // Cleanup effect when leaving the composable
-        DisposableEffect(Unit) {
-            onDispose {
-                try {
-                    // Clear child nodes first
-                    childNodes.clear()
+            // Cleanup effect when leaving the composable
+            DisposableEffect(Unit) {
+                onDispose {
+                    try {
+                        // Clear child nodes first
+                        childNodes.clear()
 
-                    // Clean up model instance
-                    modelInstance?.let {
-                        // If there's a cleanup method, call it
-                        // it.cleanup() // Uncomment if available
+                        // Clean up model instance
+                        modelInstance?.let {
+                            // If there's a cleanup method, call it
+                            // it.cleanup() // Uncomment if available
+                        }
+                        modelInstance = null
+
+                        // Reset frame
+                        frame = null
+
+                        Log.d("ARViewer", "AR resources cleaned up")
+                    } catch (e: Exception) {
+                        Log.e("ARViewer", "Error during cleanup", e)
                     }
-                    modelInstance = null
-
-                    // Reset frame
-                    frame = null
-
-                    Log.d("ARViewer", "AR resources cleaned up")
-                } catch (e: Exception) {
-                    Log.e("ARViewer", "Error during cleanup", e)
                 }
             }
-        }
 
-        // Load model from cache on startup
-        LaunchedEffect(Unit) {
-            loadModelFromCache(
-                context = context,
+            // Load model from cache on startup
+            LaunchedEffect(Unit) {
+                loadModelFromCache(
+                    context = context,
+                    modelLoader = modelLoader,
+                    onSuccess = { instance ->
+                        modelInstance = instance
+                        isModelLoading = false
+                        Log.d("ARModel", "Model loaded successfully from cache")
+                    },
+                    onError = { error ->
+                        modelLoadError = error
+                        isModelLoading = false
+                        Log.e("ARModel", "Failed to load model: $error")
+                    },
+                    decodedName
+                )
+            }
+
+            ARScene(
+                modifier = Modifier.fillMaxSize(),
+                childNodes = childNodes,
+                engine = engine,
+                view = view,
                 modelLoader = modelLoader,
-                onSuccess = { instance ->
-                    modelInstance = instance
-                    isModelLoading = false
-                    Log.d("ARModel", "Model loaded successfully from cache")
-                },
-                onError = { error ->
-                    modelLoadError = error
-                    isModelLoading = false
-                    Log.e("ARModel", "Failed to load model: $error")
-                },
-                decodedName
-            )
-        }
-
-        ARScene(
-            modifier = Modifier.fillMaxSize(),
-            childNodes = childNodes,
-            engine = engine,
-            view = view,
-            modelLoader = modelLoader,
-            collisionSystem = collisionSystem,
-            sessionConfiguration = { session, config ->
-                config.depthMode =
-                    when (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-                        true -> Config.DepthMode.AUTOMATIC
-                        else -> Config.DepthMode.DISABLED
-                    }
-                config.instantPlacementMode = Config.InstantPlacementMode.LOCAL_Y_UP
-                config.lightEstimationMode =
-                    Config.LightEstimationMode.ENVIRONMENTAL_HDR
-            },
-            cameraNode = cameraNode,
-            planeRenderer = planeRenderer,
-            onTrackingFailureChanged = {
-                trackingFailureReason = it
-            },
-            onSessionUpdated = { session, updatedFrame ->
-                frame = updatedFrame
-
-                if (childNodes.isEmpty() && modelInstance != null) {
-                    updatedFrame.getUpdatedPlanes()
-                        .firstOrNull { it.type == Plane.Type.HORIZONTAL_UPWARD_FACING }
-                        ?.let { it.createAnchorOrNull(it.centerPose) }?.let { anchor ->
-                            childNodes.clear()
-                            childNodes.add(createAnchorNode(
-                                engine = engine,
-                                modelLoader = modelLoader,
-                                materialLoader = materialLoader,
-                                anchor = anchor,
-                                modelInstance = modelInstance!!
-                            ))
+                collisionSystem = collisionSystem,
+                sessionConfiguration = { session, config ->
+                    config.depthMode =
+                        when (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
+                            true -> Config.DepthMode.AUTOMATIC
+                            else -> Config.DepthMode.DISABLED
                         }
-                }
-            },
-            onGestureListener = rememberOnGestureListener(
-                onSingleTapConfirmed = { motionEvent, node ->
-                    if (node == null && modelInstance != null) {
-                        val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
-                        hitResults?.firstOrNull {
-                            it.isValid(
-                                depthPoint = false,
-                                point = false
-                            )
-                        }?.createAnchorOrNull()
-                            ?.let { anchor ->
-                                planeRenderer = false
+                    config.instantPlacementMode = Config.InstantPlacementMode.LOCAL_Y_UP
+                    config.lightEstimationMode =
+                        Config.LightEstimationMode.ENVIRONMENTAL_HDR
+                },
+                cameraNode = cameraNode,
+                planeRenderer = planeRenderer,
+                onTrackingFailureChanged = {
+                    trackingFailureReason = it
+                },
+                onSessionUpdated = { session, updatedFrame ->
+                    frame = updatedFrame
+
+                    if (childNodes.isEmpty() && modelInstance != null) {
+                        updatedFrame.getUpdatedPlanes()
+                            .firstOrNull { it.type == Plane.Type.HORIZONTAL_UPWARD_FACING }
+                            ?.let { it.createAnchorOrNull(it.centerPose) }?.let { anchor ->
                                 childNodes.clear()
-                                childNodes.add(createAnchorNode(
-                                    engine = engine,
-                                    modelLoader = modelLoader,
-                                    materialLoader = materialLoader,
-                                    anchor = anchor,
-                                    modelInstance = modelInstance!!
-                                ))
+                                childNodes.add(
+                                    createAnchorNode(
+                                        engine = engine,
+                                        modelLoader = modelLoader,
+                                        materialLoader = materialLoader,
+                                        anchor = anchor,
+                                        modelInstance = modelInstance!!
+                                    )
+                                )
                             }
                     }
-                })
-        )
-
-        // Status text overlay
-        Text(
-            modifier = Modifier
-                .systemBarsPadding()
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp, start = 32.dp, end = 32.dp),
-            textAlign = TextAlign.Center,
-            fontSize = 28.sp,
-            color = Color.White,
-            text = when {
-                isModelLoading -> "Loading 3D model..."
-                modelLoadError != null -> "Error: $modelLoadError"
-                trackingFailureReason != null -> trackingFailureReason!!.getDescription(context)
-                childNodes.isEmpty() -> stringResource(R.string.point_your_phone_down)
-                else -> stringResource(R.string.tap_anywhere_to_add_model)
-            }
-        )
-
-        Button(
-            modifier = Modifier
-                .fillMaxWidth(0.4f).height(80.dp)
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 25.dp),
-              onClick = {
-                  val encodedModel = URLEncoder.encode(decodedLocation, StandardCharsets.UTF_8.toString())
-                  val encodedTTS = URLEncoder.encode(decodedTts, StandardCharsets.UTF_8.toString())
-                  val encodedName = URLEncoder.encode(decodedName, StandardCharsets.UTF_8.toString())
-                  navController.popBackStack()
-                  navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
-              },
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                "View only Model",
-                color = textColor,
-                style = MaterialTheme.typography.labelMedium
+                },
+                onGestureListener = rememberOnGestureListener(
+                    onSingleTapConfirmed = { motionEvent, node ->
+                        if (node == null && modelInstance != null) {
+                            val hitResults = frame?.hitTest(motionEvent.x, motionEvent.y)
+                            hitResults?.firstOrNull {
+                                it.isValid(
+                                    depthPoint = false,
+                                    point = false
+                                )
+                            }?.createAnchorOrNull()
+                                ?.let { anchor ->
+                                    planeRenderer = false
+                                    childNodes.clear()
+                                    childNodes.add(
+                                        createAnchorNode(
+                                            engine = engine,
+                                            modelLoader = modelLoader,
+                                            materialLoader = materialLoader,
+                                            anchor = anchor,
+                                            modelInstance = modelInstance!!
+                                        )
+                                    )
+                                }
+                        }
+                    })
             )
+
+            // Status text overlay
+            Text(
+                modifier = Modifier
+                    .systemBarsPadding()
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp, start = 32.dp, end = 32.dp),
+                textAlign = TextAlign.Center,
+                fontSize = 28.sp,
+                color = Color.White,
+                text = when {
+                    isModelLoading -> "Loading 3D model..."
+                    modelLoadError != null -> "Error: $modelLoadError"
+                    trackingFailureReason != null -> trackingFailureReason!!.getDescription(context)
+                    childNodes.isEmpty() -> stringResource(R.string.point_your_phone_down)
+                    else -> stringResource(R.string.tap_anywhere_to_add_model)
+                }
+            )
+
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth(0.4f).height(80.dp)
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp),
+                onClick = {
+                    val encodedModel =
+                        URLEncoder.encode(decodedLocation, StandardCharsets.UTF_8.toString())
+                    val encodedTTS =
+                        URLEncoder.encode(decodedTts, StandardCharsets.UTF_8.toString())
+                    val encodedName =
+                        URLEncoder.encode(decodedName, StandardCharsets.UTF_8.toString())
+                    navController.popBackStack()
+                    navController.navigate("model/$encodedModel/$encodedTTS/$encodedName")
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        modifier = Modifier.size(20.dp),
+                        painter = painterResource(R.drawable.cube_white),
+                        contentDescription = "null",
+                        tint = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        "Back to Model",
+                        color = textColor,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
         }
     }
-}
 
 
 private suspend fun loadModelFromCache(

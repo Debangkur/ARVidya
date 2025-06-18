@@ -173,7 +173,7 @@ private fun SignUpSection(
             )
         } else {
             Text(
-                text = "Log in",
+                text = "Sign Up",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
             )
         }
