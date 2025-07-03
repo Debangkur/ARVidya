@@ -63,6 +63,5 @@ A cutting-edge educational Android app designed to make learning science subject
 
 4.Run on an emulator or physical Android device (Android 7.0+)
 
-## You can download the apk from the Release 
-
-## NOTE: PLEASE USE email: abc@gmail.com and password: abc123 for login
+## You can download the apk from the Releases 
+## NOTE: Use email: abc@gmail.com and password: abc123 for login
